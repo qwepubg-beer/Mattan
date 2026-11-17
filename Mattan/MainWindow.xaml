@@ -7,6 +7,54 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Колличество столбцов (магазины)" Margin="5,0,5,0"/>
+            <ComboBox Grid.Column="1" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
+                <ComboBoxItem Content="1"></ComboBoxItem>
+                <ComboBoxItem Content="2"></ComboBoxItem>
+                <ComboBoxItem Content="3"></ComboBoxItem>
+                <ComboBoxItem Content="4"></ComboBoxItem>
+                <ComboBoxItem Content="5"></ComboBoxItem>
+                <ComboBoxItem Content="6"></ComboBoxItem>
+                <ComboBoxItem Content="7"></ComboBoxItem>
+                <ComboBoxItem Content="8"></ComboBoxItem>
+                <ComboBoxItem Content="9"></ComboBoxItem>
+                <ComboBoxItem Content="10"></ComboBoxItem>
+            </ComboBox>
+            <TextBlock Text="Колличество строк (поставщики)" Grid.Column="2" VerticalAlignment="Top"  MaxHeight="50" Margin="5,0,5,0"/>
+            <ComboBox Grid.Column="4" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
+                <ComboBoxItem Content="1"></ComboBoxItem>
+                <ComboBoxItem Content="2"></ComboBoxItem>
+                <ComboBoxItem Content="3"></ComboBoxItem>
+                <ComboBoxItem Content="4"></ComboBoxItem>
+                <ComboBoxItem Content="5"></ComboBoxItem>
+                <ComboBoxItem Content="6"></ComboBoxItem>
+                <ComboBoxItem Content="7"></ComboBoxItem>
+                <ComboBoxItem Content="8"></ComboBoxItem>
+                <ComboBoxItem Content="9"></ComboBoxItem>
+                <ComboBoxItem Content="10"></ComboBoxItem>
+            </ComboBox>
+        </Grid>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button MaxHeight="50" Grid.Column="2" VerticalAlignment="Bottom" Content="Импорт эксель" Margin="5,0,5,0"></Button>
+            <Button MaxHeight="50" Grid.Column="3"  VerticalAlignment="Bottom" Content="Далее" Margin="5,0,5,0"></Button>
+        </Grid>
     </Grid>
 </Window>
