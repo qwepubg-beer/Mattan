@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Mattan"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <Grid>
+    <Grid Name="Main">
         <Grid.RowDefinitions>
             <RowDefinition Height="1*"/>
             <RowDefinition Height="auto"/>
@@ -20,7 +20,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBlock Text="Колличество столбцов (магазины)" Margin="5,0,5,0"/>
-            <ComboBox Grid.Column="1" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
+            <ComboBox Name="ColumnCb" Grid.Column="1" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
                 <ComboBoxItem Content="1"></ComboBoxItem>
                 <ComboBoxItem Content="2"></ComboBoxItem>
                 <ComboBoxItem Content="3"></ComboBoxItem>
@@ -33,7 +33,7 @@
                 <ComboBoxItem Content="10"></ComboBoxItem>
             </ComboBox>
             <TextBlock Text="Колличество строк (поставщики)" Grid.Column="2" VerticalAlignment="Top"  MaxHeight="50" Margin="5,0,5,0"/>
-            <ComboBox Grid.Column="4" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
+            <ComboBox Name="RowCb" Grid.Column="4" MaxHeight="50" VerticalAlignment="Top" Margin="5,0,5,0">
                 <ComboBoxItem Content="1"></ComboBoxItem>
                 <ComboBoxItem Content="2"></ComboBoxItem>
                 <ComboBoxItem Content="3"></ComboBoxItem>
@@ -54,7 +54,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Button MaxHeight="50" Grid.Column="2" VerticalAlignment="Bottom" Content="Импорт эксель" Margin="5,0,5,0"></Button>
-            <Button MaxHeight="50" Grid.Column="3"  VerticalAlignment="Bottom" Content="Далее" Margin="5,0,5,0"></Button>
+            <Button Name="next" MaxHeight="50" Grid.Column="3"  VerticalAlignment="Bottom" Content="Далее" Margin="5,0,5,0" Click="next_Click"></Button>
         </Grid>
     </Grid>
 </Window>
