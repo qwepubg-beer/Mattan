@@ -58,9 +58,7 @@ namespace Mattan
 
             for (int j = 0; j < consumersCount; j++)
                 transportTable.Columns.Add($"B{j + 1}", typeof(double));
-
             transportTable.Columns.Add("Запасы", typeof(double));
-
             for (int i = 0; i < suppliersCount; i++)
             {
                 DataRow row = transportTable.NewRow();
@@ -69,16 +67,13 @@ namespace Mattan
                     row[j] = 0.0;
                 transportTable.Rows.Add(row);
             }
-
             DataRow demandRow = transportTable.NewRow();
             demandRow[0] = "Потребности";
             for (int j = 1; j <= consumersCount; j++)
                 demandRow[j] = 0.0;
             transportTable.Rows.Add(demandRow);
-
             transportGrid.ItemsSource = transportTable.DefaultView;
             solutionGrid.Visibility = Visibility.Collapsed;
-
             transportGrid.AutoGeneratingColumn += (s, e) =>
             {
                 if (e.Column.Header.ToString() == "Поставщик \\ Потребитель")
@@ -149,6 +144,7 @@ namespace Mattan
 
             try
             {
+                BalanceTransportTask();
                 ReadTransportData(out double[,] costs, out double[] supply, out double[] demand);
 
                 // Проверка баланса
@@ -254,14 +250,44 @@ namespace Mattan
             return plan;
         }
         private void ShowSolution(double[,] plan, double[,] costs,
-                                  double[] supply, double[] demand, double totalCost)
+                                 double[] supply, double[] demand, double totalCost)
         {
             int n = supply.Length, m = demand.Length;
+
+            // 1. Считаем фактически использованные запасы и удовлетворенные потребности
+            double[] usedSupply = new double[n];
+            double[] metDemand = new double[m];
+            double totalExcess = 0; // Лишние запасы
+            double totalDeficit = 0; // Нехватка (дефицит)
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < m; j++)
+                {
+                    usedSupply[i] += plan[i, j];
+                    metDemand[j] += plan[i, j];
+                }
+                // Если остались неиспользованные запасы
+                if (supply[i] - usedSupply[i] > 1e-6)
+                    totalExcess += (supply[i] - usedSupply[i]);
+            }
+
+            for (int j = 0; j < m; j++)
+            {
+                // Если потребность не была полностью закрыта
+                if (demand[j] - metDemand[j] > 1e-6)
+                    totalDeficit += (demand[j] - metDemand[j]);
+            }
+
+            // 2. Формируем таблицу решения
             DataTable solTable = new DataTable();
             solTable.Columns.Add("Поставщик \\ Потребитель", typeof(string));
             for (int j = 0; j < m; j++)
-            solTable.Columns.Add($"B{j + 1} (c={costs[0, j]:0.##})", typeof(string));
-            solTable.Columns.Add("Запасы", typeof(double));
+                solTable.Columns.Add($"B{j + 1} (c={costs[0, j]:0.##})", typeof(string));
+
+            // Меняем тип на string, чтобы можно было записать формат "Использовано / Всего"
+            solTable.Columns.Add("Запасы (Исп / Всего)", typeof(string));
+
             for (int i = 0; i < n; i++)
             {
                 DataRow row = solTable.NewRow();
@@ -272,21 +298,93 @@ namespace Mattan
                         ? $"{plan[i, j]:0.##}"
                         : "-";
                 }
-                row[m + 1] = supply[i];
+
+                // Проверка на лишние запасы для конкретного поставщика
+                double unused = supply[i] - usedSupply[i];
+                if (unused > 1e-6)
+                    row[m + 1] = $"{usedSupply[i]:0.##} / {supply[i]:0.##} (ост. {unused:0.##})";
+                else
+                    row[m + 1] = $"{usedSupply[i]:0.##} / {supply[i]:0.##}";
+
                 solTable.Rows.Add(row);
             }
+
             DataRow demandRow = solTable.NewRow();
-            demandRow[0] = "Потребности";
+            demandRow[0] = "Потребности (План / Всего)";
             for (int j = 0; j < m; j++)
             {
-                demandRow[j + 1] = demand[j].ToString("0.##");
+                // Проверка на нехватку для конкретного потребителя
+                double deficit = demand[j] - metDemand[j];
+                if (deficit > 1e-6)
+                    demandRow[j + 1] = $"{metDemand[j]:0.##} / {demand[j]:0.##} (деф. {deficit:0.##})";
+                else
+                    demandRow[j + 1] = $"{metDemand[j]:0.##} / {demand[j]:0.##}";
             }
-            demandRow[m+1] = totalCost.ToString("0.##");
+
+            demandRow[m + 1] = totalCost.ToString("0.##");
             solTable.Rows.Add(demandRow);
+
             solutionGrid.ItemsSource = solTable.DefaultView;
             solutionGrid.Visibility = Visibility.Visible;
-            MessageBox.Show($"Общая стоимость перевозок: {totalCost:0.##}",
+            string warning = "";
+            if (totalExcess > 1e-6)
+                warning += $"\n\nВнимание: остались неиспользованные запасы ({totalExcess:0.##} ед.).";
+
+            if (totalDeficit > 1e-6)
+                warning += $"\n\n⚠ Внимание: не удовлетворены потребности ({totalDeficit:0.##} ед.).";
+
+            MessageBox.Show($"Общая стоимость перевозок: {totalCost:0.##}{warning}",
                             "Решение найдено", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        private void BalanceTransportTask()
+        {
+            int n = transportTable.Rows.Count - 1; // Количество поставщиков
+            int m = transportTable.Columns.Count - 2; // Количество потребителей
+
+            double sumSupply = 0, sumDemand = 0;
+            for (int i = 0; i < n; i++)
+                sumSupply += Convert.ToDouble(transportTable.Rows[i][m + 1]);
+            for (int j = 0; j < m; j++)
+                sumDemand += Convert.ToDouble(transportTable.Rows[n][j + 1]);
+
+            // 1. Дефицит (потребностей больше, чем запасов) -> добавляем фиктивного поставщика (строку)
+            if (sumSupply < sumDemand - 1e-6)
+            {
+                double diff = sumDemand - sumSupply;
+                DataRow newRow = transportTable.NewRow();
+                newRow[0] = $"A{n + 1} (фикт.)";
+
+                // Заполняем нулями (тарифы)
+                for (int j = 1; j <= m; j++)
+                    newRow[j] = 0.0;
+
+                newRow[m + 1] = diff; // Запас фиктивного поставщика
+
+                // Вставляем перед последней строкой "Потребности"
+                transportTable.Rows.InsertAt(newRow, n);
+
+                MessageBox.Show($"Задача была не сбалансирована (дефицит {diff:0.##}).\nДобавлен фиктивный поставщик A{n + 1} (строка с нулями).",
+                                "Балансировка", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            // 2. Избыток (запасов больше, чем потребностей) -> добавляем фиктивного потребителя (столбец)
+            else if (sumSupply > sumDemand + 1e-6)
+            {
+                double diff = sumSupply - sumDemand;
+
+                // Добавляем столбец и ставим его перед столбцом "Запасы"
+                DataColumn newCol = transportTable.Columns.Add($"B{m + 1} (фикт.)", typeof(double));
+                newCol.SetOrdinal(m + 1);
+
+                // Заполняем тарифы нулями для всех поставщиков
+                for (int i = 0; i < n; i++)
+                    transportTable.Rows[i][m + 1] = 0.0;
+
+                // Заполняем потребность фиктивного потребителя в последней строке
+                transportTable.Rows[n][m + 1] = diff;
+
+                MessageBox.Show($"Задача была не сбалансирована (избыток {diff:0.##}).\nДобавлен фиктивный потребитель B{m + 1} (столбец с нулями).",
+                                "Балансировка", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         private void ImportExcel_Click(object sender, RoutedEventArgs e)
         {
