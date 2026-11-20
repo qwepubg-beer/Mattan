@@ -253,13 +253,10 @@ namespace Mattan
                                  double[] supply, double[] demand, double totalCost)
         {
             int n = supply.Length, m = demand.Length;
-
-            // 1. Считаем фактически использованные запасы и удовлетворенные потребности
             double[] usedSupply = new double[n];
             double[] metDemand = new double[m];
-            double totalExcess = 0; // Лишние запасы
-            double totalDeficit = 0; // Нехватка (дефицит)
-
+            double totalExcess = 0;
+            double totalDeficit = 0;
             for (int i = 0; i < n; i++)
             {
                 for (int j = 0; j < m; j++)
@@ -267,25 +264,19 @@ namespace Mattan
                     usedSupply[i] += plan[i, j];
                     metDemand[j] += plan[i, j];
                 }
-                // Если остались неиспользованные запасы
                 if (supply[i] - usedSupply[i] > 1e-6)
                     totalExcess += (supply[i] - usedSupply[i]);
             }
 
             for (int j = 0; j < m; j++)
             {
-                // Если потребность не была полностью закрыта
                 if (demand[j] - metDemand[j] > 1e-6)
                     totalDeficit += (demand[j] - metDemand[j]);
             }
-
-            // 2. Формируем таблицу решения
             DataTable solTable = new DataTable();
             solTable.Columns.Add("Поставщик \\ Потребитель", typeof(string));
             for (int j = 0; j < m; j++)
                 solTable.Columns.Add($"B{j + 1} (c={costs[0, j]:0.##})", typeof(string));
-
-            // Меняем тип на string, чтобы можно было записать формат "Использовано / Всего"
             solTable.Columns.Add("Запасы (Исп / Всего)", typeof(string));
 
             for (int i = 0; i < n; i++)
@@ -298,27 +289,23 @@ namespace Mattan
                         ? $"{plan[i, j]:0.##}"
                         : "-";
                 }
-
-                // Проверка на лишние запасы для конкретного поставщика
                 double unused = supply[i] - usedSupply[i];
                 if (unused > 1e-6)
                     row[m + 1] = $"{usedSupply[i]:0.##} / {supply[i]:0.##} (ост. {unused:0.##})";
                 else
-                    row[m + 1] = $"{usedSupply[i]:0.##} / {supply[i]:0.##}";
+                    row[m + 1] = $"{usedSupply[i]:0.##}    / {supply[i]:0.##}";
 
                 solTable.Rows.Add(row);
             }
-
             DataRow demandRow = solTable.NewRow();
-            demandRow[0] = "Потребности (План / Всего)";
+            demandRow[0] = "Потребности";
             for (int j = 0; j < m; j++)
             {
-                // Проверка на нехватку для конкретного потребителя
                 double deficit = demand[j] - metDemand[j];
                 if (deficit > 1e-6)
-                    demandRow[j + 1] = $"{metDemand[j]:0.##} / {demand[j]:0.##} (деф. {deficit:0.##})";
+                    demandRow[j + 1] = $"{metDemand[j]:0.##}";
                 else
-                    demandRow[j + 1] = $"{metDemand[j]:0.##} / {demand[j]:0.##}";
+                    demandRow[j + 1] = $"{metDemand[j]:0.##}";
             }
 
             demandRow[m + 1] = totalCost.ToString("0.##");
