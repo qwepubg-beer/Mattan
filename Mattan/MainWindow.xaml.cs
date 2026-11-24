@@ -40,16 +40,10 @@ namespace Mattan
                 Background = new SolidColorBrush(Color.FromRgb(245, 250, 245))
             };
             Grid.SetRow(solutionGrid, 1);
-            // Чтобы решения не перекрывались, положим их в один Grid с отступом сверху
-            // Проще: создадим отдельный Grid поверх transportGrid
             Panel.SetZIndex(solutionGrid, 10);
             solutionGrid.Visibility = Visibility.Collapsed;
             Main.Children.Add(solutionGrid);
         }
-
-        // ============================================================
-        //  1. Построение пустой таблицы
-        // ============================================================
         public void BuildTransportGrid(int suppliersCount, int consumersCount)
         {
             transportTable = new DataTable();
@@ -80,10 +74,6 @@ namespace Mattan
                     e.Column.IsReadOnly = true;
             };
         }
-
-        // ============================================================
-        //  2. Чтение данных из грида
-        // ============================================================
         public void ReadTransportData(out double[,] costs, out double[] supply, out double[] demand)
         {
             int suppliersCount = transportTable.Rows.Count - 1;
@@ -105,10 +95,6 @@ namespace Mattan
             for (int j = 0; j < consumersCount; j++)
                 demand[j] = Convert.ToDouble(demandRow[j + 1]);
         }
-
-        // ============================================================
-        //  3. Кнопка «Построить»
-        // ============================================================
         private void next_Click(object sender, RoutedEventArgs e)
         {
             if (RowCb.SelectedIndex != -1 && ColumnCb.SelectedIndex != -1)
@@ -123,10 +109,6 @@ namespace Mattan
                                 "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-
-        // ============================================================
-        //  4. Кнопка «Решить»
-        // ============================================================
         private void Answer_Click(object sender, RoutedEventArgs e)
         {
             if (transportTable == null)
@@ -174,10 +156,6 @@ namespace Mattan
                                 MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-        // ============================================================
-        //  5. Северо-западный угол
-        // ============================================================
         private static double[,] NorthWestCorner(double[,] costs, double[] supply, double[] demand)
         {
             int n = supply.Length, m = demand.Length;
@@ -198,10 +176,6 @@ namespace Mattan
             }
             return plan;
         }
-
-        // ============================================================
-        //  6. Метод наименьшего элемента
-        // ============================================================
         private static double[,] MinCostMethod(double[,] costs, double[] supply, double[] demand)
         {
             int n = supply.Length, m = demand.Length;
@@ -212,7 +186,6 @@ namespace Mattan
 
             while (true)
             {
-                // Ищем минимальную стоимость среди незакрытых ячеек
                 double minCost = double.MaxValue;
                 int bi = -1, bj = -1;
 
@@ -230,20 +203,15 @@ namespace Mattan
                         }
                     }
                 }
-
-                if (bi == -1) break; // всё распределено
-
+                if (bi == -1) break;
                 double x = Math.Min(s[bi], d[bj]);
                 plan[bi, bj] = x;
                 s[bi] -= x;
                 d[bj] -= x;
-
                 if (s[bi] < 1e-9)
                     for (int j = 0; j < m; j++) used[bi, j] = true;
                 if (d[bj] < 1e-9)
                     for (int i = 0; i < n; i++) used[i, bj] = true;
-
-                // Если обнулились обе — закрываем ячейку, но не сдвигаем обе координаты
                 if (s[bi] < 1e-9 && d[bj] < 1e-9)
                     used[bi, bj] = true;
             }
@@ -278,7 +246,6 @@ namespace Mattan
             for (int j = 0; j < m; j++)
                 solTable.Columns.Add($"B{j + 1} (c={costs[0, j]:0.##})", typeof(string));
             solTable.Columns.Add("Запасы (Исп / Всего)", typeof(string));
-
             for (int i = 0; i < n; i++)
             {
                 DataRow row = solTable.NewRow();
@@ -307,69 +274,50 @@ namespace Mattan
                 else
                     demandRow[j + 1] = $"{metDemand[j]:0.##}";
             }
-
             demandRow[m + 1] = totalCost.ToString("0.##");
             solTable.Rows.Add(demandRow);
-
             solutionGrid.ItemsSource = solTable.DefaultView;
             solutionGrid.Visibility = Visibility.Visible;
             string warning = "";
             if (totalExcess > 1e-6)
                 warning += $"\n\nВнимание: остались неиспользованные запасы ({totalExcess:0.##} ед.).";
-
             if (totalDeficit > 1e-6)
-                warning += $"\n\n⚠ Внимание: не удовлетворены потребности ({totalDeficit:0.##} ед.).";
-
+                warning += $"\n\n Внимание: не удовлетворены потребности ({totalDeficit:0.##} ед.).";
             MessageBox.Show($"Общая стоимость перевозок: {totalCost:0.##}{warning}",
                             "Решение найдено", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         private void BalanceTransportTask()
         {
-            int n = transportTable.Rows.Count - 1; // Количество поставщиков
-            int m = transportTable.Columns.Count - 2; // Количество потребителей
+            int n = transportTable.Rows.Count - 1;
+            int m = transportTable.Columns.Count - 2;
 
             double sumSupply = 0, sumDemand = 0;
             for (int i = 0; i < n; i++)
                 sumSupply += Convert.ToDouble(transportTable.Rows[i][m + 1]);
             for (int j = 0; j < m; j++)
                 sumDemand += Convert.ToDouble(transportTable.Rows[n][j + 1]);
-
-            // 1. Дефицит (потребностей больше, чем запасов) -> добавляем фиктивного поставщика (строку)
             if (sumSupply < sumDemand - 1e-6)
             {
                 double diff = sumDemand - sumSupply;
                 DataRow newRow = transportTable.NewRow();
                 newRow[0] = $"A{n + 1} (фикт.)";
-
-                // Заполняем нулями (тарифы)
                 for (int j = 1; j <= m; j++)
                     newRow[j] = 0.0;
-
-                newRow[m + 1] = diff; // Запас фиктивного поставщика
-
-                // Вставляем перед последней строкой "Потребности"
+                newRow[m + 1] = diff;
                 transportTable.Rows.InsertAt(newRow, n);
 
-                MessageBox.Show($"Задача была не сбалансирована (дефицит {diff:0.##}).\nДобавлен фиктивный поставщик A{n + 1} (строка с нулями).",
+                MessageBox.Show($"Задача была не сбалансирована (дефицит {diff:0.##}).\nДобавлен фиктивный поставщик A{n + 1}.",
                                 "Балансировка", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-            // 2. Избыток (запасов больше, чем потребностей) -> добавляем фиктивного потребителя (столбец)
             else if (sumSupply > sumDemand + 1e-6)
             {
                 double diff = sumSupply - sumDemand;
-
-                // Добавляем столбец и ставим его перед столбцом "Запасы"
                 DataColumn newCol = transportTable.Columns.Add($"B{m + 1} (фикт.)", typeof(double));
                 newCol.SetOrdinal(m + 1);
-
-                // Заполняем тарифы нулями для всех поставщиков
                 for (int i = 0; i < n; i++)
                     transportTable.Rows[i][m + 1] = 0.0;
-
-                // Заполняем потребность фиктивного потребителя в последней строке
                 transportTable.Rows[n][m + 1] = diff;
-
-                MessageBox.Show($"Задача была не сбалансирована (избыток {diff:0.##}).\nДобавлен фиктивный потребитель B{m + 1} (столбец с нулями).",
+                MessageBox.Show($"Задача была не сбалансирована (избыток {diff:0.##}).\nДобавлен фиктивный потребитель B{m + 1}.",
                                 "Балансировка", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -381,12 +329,10 @@ namespace Mattan
                 Title = "Выберите файл с транспортной задачей"
             };
             if (dlg.ShowDialog() != true) return;
-
             Excel.Application app = null;
             Excel.Workbook wb = null;
             Excel.Worksheet ws = null;
             Excel.Range used = null;
-
             try
             {
                 app = new Excel.Application { Visible = false };
@@ -394,13 +340,10 @@ namespace Mattan
                 ws = (Excel.Worksheet)wb.Sheets[1];
 
                 used = ws.UsedRange;
-
-                int firstRow = used.Row;               // первая строка UsedRange
-                int firstCol = used.Column;            // первый столбец UsedRange
+                int firstRow = used.Row;
+                int firstCol = used.Column;
                 int lastRow = firstRow + used.Rows.Count - 1;
                 int lastCol = firstCol + used.Columns.Count - 1;
-
-                // --- Ищем последний столбец по заголовку "Запасы" ---
                 int colSupply = -1;
                 for (int c = firstCol; c <= lastCol; c++)
                 {
@@ -412,8 +355,6 @@ namespace Mattan
                     }
                 }
                 if (colSupply == -1) throw new Exception("Не найден столбец «Запасы».");
-
-                // --- Ищем последнюю строку по заголовку "Потреб..." ---
                 int rowDemand = -1;
                 for (int r = firstRow; r <= lastRow; r++)
                 {
@@ -425,19 +366,11 @@ namespace Mattan
                     }
                 }
                 if (rowDemand == -1) throw new Exception("Не найдена строка «Потребности».");
-
-                // --- Размеры ---
-                // Данные поставщиков: со строки (firstRow + 1) до (rowDemand - 1)
-                // Данные потребителей: со столбца (firstCol + 1) до (colSupply - 1)
                 int suppliers = rowDemand - (firstRow + 1);
                 int consumers = colSupply - (firstCol + 1);
-
                 if (suppliers < 1 || consumers < 1)
                     throw new Exception("Не удалось определить размеры таблицы. Проверьте заголовки.");
-
                 BuildTransportGrid(suppliers, consumers);
-
-                // --- Читаем тарифы и запасы ---
                 for (int i = 0; i < suppliers; i++)
                 {
                     DataRow row = transportTable.Rows[i];
@@ -453,8 +386,6 @@ namespace Mattan
                     object s = used.Cells[excelRow, colSupply].Value2;
                     row[consumers + 1] = TryToDouble(s);
                 }
-
-                // --- Читаем потребности ---
                 DataRow demandRow = transportTable.Rows[suppliers];
                 for (int j = 0; j < consumers; j++)
                 {
@@ -484,8 +415,6 @@ namespace Mattan
                 GC.WaitForPendingFinalizers();
             }
         }
-
-        // Безопасное преобразование ячейки Excel в double
         private static double TryToDouble(object value)
         {
             if (value == null) return 0.0;
